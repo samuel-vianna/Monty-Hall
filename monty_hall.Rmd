@@ -1,0 +1,29 @@
+---
+title: Simulação do problema de Monty Hall
+author: Samuel Vianna Quintanilha
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+runtime: shiny
+---
+
+# Introdução
+
+```{r}
+library(shiny)
+```
+
+
+# Simulação
+
+```{r}
+
+sliderInput('n_sim', 'Número de simulações', min=100, max=10000, value=1000)
+
+reactive({
+  print(input$n_sim)
+})
+
+```
+
