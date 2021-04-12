@@ -1,5 +1,5 @@
 ---
-title: Simulação do problema de Monty Hall
+title: Simulando o problema de Monty Hall
 author: Samuel Vianna Quintanilha
 output: 
   html_document:
@@ -10,20 +10,189 @@ runtime: shiny
 
 # Introdução
 
-```{r}
+```{r, echo=F, warning=F, message=F}
 library(shiny)
+library(dplyr)
+library(ggplot2)
 ```
 
+O problema de Monty Hall ( ou paradoxo de Monty Hall) surgiu baseado em um programa de tv dos Estados Unidos chamado *Let's make a Deal*, em que o participante precisava escolher entre 3 portas, sendo que atrás de uma delas estava um Carro, enquanto nas outras estavam Cabras. Caso o participante acertasse em qual porta estivesse o carro, ele era todo seu.
+
+Bem simples, não? Se existem 3 portas e 1 delas tem o carro então a chance do participante chutas e acertar é de $\frac{1}{3}$. Porém, o problema todo surge um pouco depois.
+
+Após o participante escolher uma das portas, o apresentador abre uma das outras 2 portas restantes e revela uma cabra. Com essa informação, ele pergunta se o participante deseja trocar de porta. Com isso, surge a grande dúvida: **em termos de probabilidade, é vantajoso que o participante troque de porta?**
+
+À primeira vista a resposta parece óbvia, pois se temos 2 portas, a chance de cada uma conter o prêmio é de 50%, então tanto faz trocar de porta ou não, certo?
+
+**Errado!!!** Na verdade, espera-se que ele ganhe $\frac{2}{3}$ das vezes em que optar trocar de porta, enquanto sua chance de sucesso caso fique com a mesma porta inicial é de $\frac{1}{3}$.
+
+Mas como isso é possível? Qual é a lógica por trás disso? É o que será explicado a seguir.
+
+# A explicação por trás do problema.
+
+O segredo para entender esse problema consiste em saber que a escolha do participante é aleatória, enquanto a do apresentador não.
+
+No início do jogo, o participante tem 3 opções, então, após escolehr uma das portas, pode-se pensar em 2 cenários:
+
+1. O participante acertou em qual porta está o prêmio
+2. O participante errou em qual porta está o prêmio
+
+Caso o participante tenha de fato acertado de primeira aonde está o carro, é indiferente qual porta o apresentador irá abrir, dado que ambas possuem cabras atrás delas. Porém, caso o participante tenha errado em sua primeira escolha, então o apresentador (que sabe aonde o carro está) obviamente terá de "manipular" sua ação e abrir a porta em que sabe que o carro não está.
+
+Com isso, a visão sobre a probabilidade desses cenários começa a se tornar um pouco mais clara.
+
+## Analisando os cenários mais a fundo
+
+Como o participante não sabe em qual porta está o prêmio, então, teoricamente, sua chance de acertar de primeira é de $\frac{1}{3}$. Ou seja, cerca de  33.33% das vezes será indiferente a escolha do apresentador de qual porta abrir, já que o prêmio já está atrás da porta escolhida pelo participante.
+
+Por outro lado, em $\frac{2}{3}$ das vezes o participante escolherá a porta errada, então, o apresentador terá que escolher mostrar a porta com a cabra, restando como outra porta aquela que possui o prêmio.
+
+Ou seja, ao ser oferecida a troca, cerca de 2 a cada 3 vezes o prêmio estará atrás da porta não escolhida e por isso é vantajoso realizar a troca.
+
+## Uma outra perspectiva
+
+Para melhor entender o conceito aplicado acima, pense no mesmo jogo com a seguinte alteração: agora há 100 portas para serem escolhidas e somente 1 contém o prêmio.
+
+Seguindo as regras do jogo original, após o participante escolher a porta, o apresentador abriria 98 portas com cabras, e então oferecia a troca.
+
+Após aplicar o mesmo conceito, é fácil entender que ao trocar de porta suas chances de ganhar aumentarm de $\frac{1}{100}$ para $\frac{99}{100}$.
 
 # Simulação
 
+Para exemplificar o problema, serão realizadas algumas simulações para verificar se esse realmente é o resultado esperado
+
+## Explicação do algoritmo
+
+A ideia aplicada é a seguinte: Para exemplificar as 3 portas, é utilizado um vetor com os números de 1 a 3. Então, é escolhido aleatóriamente um dos números para ser a escolha do participante e outro para ser a porta com o prêmio.
+
+O número da porta escolhida e do prêmio sejam o mesmo, então é retirado do vetor o número selecionado e um outro aleatório.
+
+Caso a porta escolhida não seja a do prêmio, então é retirado do vetor o número selecionado e o outro que não contém o prêmio.
+
+Para exemplificar a troca de portas, caso o número da porta com o prêmio seja igual ao número restante no vetor, então significa que o participante ganhou o prêmio ao trocar de porta.
+
+**Obs**: O caso em que o participante ganha é representado por 1, e quando perde é representado por 0.
+
+## O algoritmo
+
+Dado a explicação acima, pode ser definida a seguinte função:
+
 ```{r}
+jogo <- function (){
+  portas <- c(1,2,3) # possíveis portas
+  
+  chute  <- sample(portas, 1) # porta escolhida pelo jogador
+  premio <- sample(portas, 1) # porta com o prêmio
+  
+  if(premio == chute){ # condição para quando acerta no primeiro palpite
+    portas <- portas[-which(portas == chute)]
+    
+    porta_aberta <- sample(portas,1)
+    
+    portas <- portas[-which(portas == porta_aberta)]
+  } else { #condição para quando quando erra no primeiro palpite
+    portas <- premio
+  }  
+  
+  resultado <- premio==portas # verificação se ganhou ao trocar de porta
+  
+  dados <- c(chute, premio, resultado) #elementos a serem retornados pela função
+  
+  return(dados) 
+  
+}
+```
 
-sliderInput('n_sim', 'Número de simulações', min=100, max=10000, value=1000)
+Realizando a simulação 100 vezes, obtém-se o seguinte resultado:
 
-reactive({
-  print(input$n_sim)
-})
+```{r}
+set.seed(555) # definindo semente
+n <- 100 #numéro de simulações
+
+replicate(n, jogo()) %>% # simulando 10 jogos
+  as.data.frame() %>% t()  -> jogos # transformando em um data frame e atribuindo ao ojbeto jogos
+
+row.names(jogos) <- c(1:n) # mudando nome das linhas
+colnames(jogos) <- c('chute', 'premio', 'resultado') # mudando nome das colunas
+
+head(jogos, n = 10) # pritando os 10 resultados
+
+mean(jogos[,3]) # média de vezes que ganhou ao trocar de porta
+```
+
+
+O resultado obtido empiricamente foi próximo ao esperado, porém, não se pode concluir algo simplesmente olhando uma estimativa de 100 jogos. Dado que existe uma probabilidade de ao acaso o participante perder ou ganhar em todos os 100 jogos. Com isso, a fim de verificar de fato o comportamento desse fenômeno, serão simuladas 1000 amostras, em que cada uma representa a média de vezes em que o participante ganhou após trocar de porta em 100 jogos.
+
+## Realizando a simulação
+
+```{r}
+# modificando a função para retornar somente o resultado
+jogo_v2 <- function (){
+  portas <- c(1,2,3) # possíveis portas
+  
+  chute  <- sample(portas, 1) # porta escolhida pelo jogador
+  premio <- sample(portas, 1) # porta com o prêmio
+  
+  if(premio == chute){ # condição para quando acerta no primeiro palpite
+    portas <- portas[-which(portas == chute)]
+    
+    porta_aberta <- sample(portas,1)
+    
+    portas <- portas[-which(portas == porta_aberta)]
+  } else { #condição para quando quando erra no primeiro palpite
+    portas <- premio
+  }  
+  
+  resultado <- premio==portas # verificação se ganhou ao trocar de porta
+  
+  return(resultado) 
+  
+}
+
+# simulando os jogos
+n <- 100
+m <- 1000
+
+set.seed(555) # definindo semente
+
+resultados <- replicate(m, mean(replicate(n, jogo_v2()))) # simulando
+
+resultados %>% as.data.frame() -> resultados # transformando resultados em data frame
+
+colnames(resultados) <- c('media') # mudando nome das colunas
 
 ```
+
+
+## Análise estatística
+
+Após realizar as simulações, o histograma a seguir representa o comportamento do resultado da média de vitórias de cada simulação de 100 jogos.
+
+```{r}
+ resultados %>%
+  ggplot(aes(x=media)) + geom_histogram(col='white', fill='royalblue', binwidth = 0.01) +
+  labs(x='média de vitórias após 100 jogos', y='frequência') +
+  ggtitle('Histogramam da média de vitórias')
+
+```
+
+Considerando normalidade dos dados a partir do teorema do limite central e aplicando o teste T para verificar se a média é significativamente diferente de $\frac{2}{3}$, é obtido o seguinte resultado:
+
+```{r}
+t.test(resultados$media, mu = 2/3)
+```
+
+Com os resultados obtidos, não se rejeita a hipótese nula à um nível de significância de 5%, ou seja, não há indícios estatísticos que comprovam que a média de ganhos ao trocar a porta seja diferente de $\frac{2}{3}$.
+
+Realizando o teste não paramétrico de Wilcoxon para 1 amostra, obtém-se o seguinte resultado:
+
+```{r}
+wilcox.test(resultados$media, mu = 2/3)
+```
+
+Novamente, à um nível de significância de 5%, não se rejeita a hipótese nula.
+
+# Conclusão
+
+Com isso, foi possível observar empiricamente o pensamento por trás do problema de Monty Hall, em que realmente há vantagem ao trocar a porta, dado as condições do problema.
 
