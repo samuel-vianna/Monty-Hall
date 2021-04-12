@@ -5,11 +5,10 @@ output:
   html_document:
     toc: true
     toc_float: true
-runtime: shiny
 ---
-
+  
 # Introdução
-
+  
 ```{r, echo=F, warning=F, message=F}
 library(shiny)
 library(dplyr)
@@ -28,7 +27,7 @@ Após o participante escolher uma das portas, o apresentador abre uma das outras
 
 Mas como isso é possível? Qual é a lógica por trás disso? É o que será explicado a seguir.
 
-# A explicação por trás do problema.
+# A explicação por trás do problema
 
 O segredo para entender esse problema consiste em saber que a escolha do participante é aleatória, enquanto a do apresentador não.
 
